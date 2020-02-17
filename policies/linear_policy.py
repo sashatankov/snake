@@ -10,6 +10,7 @@ class Linear(bp.Policy):
 
         # each action is represented by a one-hot-vector
         self.actions_one_hot_vectors = dict()
+        self.actions_one_hot_vectors[None] = np.zeros(len(Linear.ACTIONS))
         for i, action in enumerate(Linear.ACTIONS):
             self.actions_one_hot_vectors[action] = np.zeros(len(Linear.ACTIONS))
             self.actions_one_hot_vectors[action][i] = 1
@@ -17,7 +18,7 @@ class Linear(bp.Policy):
         self.states_buffer = list()  # to save the state after each act() call
 
     def cast_string_args(self, policy_args):
-        pass
+        return policy_args
 
     def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
         learning_rate = 0.01
@@ -45,16 +46,22 @@ class Linear(bp.Policy):
         return q_max_action
 
     def _q_value(self, state, action):
+        if action is None:
+            return float("-inf")
         action_one_hot = self.actions_one_hot_vectors[action]
         neighborhood = self.get_neighborhood(state)
-        features = np.hstack(neighborhood, action_one_hot)
+        features = np.hstack((neighborhood, action_one_hot))
 
         return np.dot(features, self.weights)
 
     def get_features(self, state, action):
+        if state is None:
+            return np.zeros(12)  # num of cells + number of actions
+
+        print("action ", action)
         action_one_hot = self.actions_one_hot_vectors[action]
         neighborhood = self.get_neighborhood(state)
-        features = np.hstack(neighborhood, action_one_hot)
+        features = np.hstack((neighborhood, action_one_hot))
 
         return features
 
@@ -65,19 +72,19 @@ class Linear(bp.Policy):
         :param state:
         :return:
         """
-        window = np.zeros((3,3))
+        window = np.zeros((3, 3))
         board, head = state
         head_pos, direction = head
         x_pos, y_pos = head_pos[0], head_pos[1]
-        window[0, 0] = board[(x_pos - 1) % self.board_size, (y_pos - 1) % self.board_size]
-        window[0, 1] = board[(x_pos - 1) % self.board_size, y_pos % self.board_size]
-        window[0, 2] = board[(x_pos - 1) % self.board_size, (y_pos + 1) % self.board_size]
-        window[1, 0] = board[x_pos % self.board_size, (y_pos - 1) % self.board_size]
-        window[1, 1] = board[x_pos % self.board_size, y_pos % self.board_size]
-        window[1, 2] = board[x_pos % self.board_size, (y_pos + 1) % self.board_size]
-        window[2, 0] = board[(x_pos + 1) % self.board_size, (y_pos - 1) % self.board_size]
-        window[2, 1] = board[(x_pos + 1) % self.board_size, y_pos % self.board_size]
-        window[2, 2] = board[(x_pos + 1) % self.board_size, (y_pos + 1) % self.board_size]
+        window[0, 0] = board[(x_pos - 1) % head_pos.board_size[0], (y_pos - 1) % head_pos.board_size[1]]
+        window[0, 1] = board[(x_pos - 1) % head_pos.board_size[0], y_pos % head_pos.board_size[1]]
+        window[0, 2] = board[(x_pos - 1) % head_pos.board_size[0], (y_pos + 1) % head_pos.board_size[1]]
+        window[1, 0] = board[x_pos % head_pos.board_size[0], (y_pos - 1) % head_pos.board_size[1]]
+        window[1, 1] = board[x_pos % head_pos.board_size[0], y_pos % head_pos.board_size[1]]
+        window[1, 2] = board[x_pos % head_pos.board_size[0], (y_pos + 1) % head_pos.board_size[1]]
+        window[2, 0] = board[(x_pos + 1) % head_pos.board_size[0], (y_pos - 1) % head_pos.board_size[1]]
+        window[2, 1] = board[(x_pos + 1) % head_pos.board_size[0], y_pos % head_pos.board_size[1]]
+        window[2, 2] = board[(x_pos + 1) % head_pos.board_size[0], (y_pos + 1) % head_pos.board_size[1]]
 
         window = window.flatten()
         return window
