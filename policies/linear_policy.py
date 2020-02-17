@@ -4,7 +4,6 @@ import numpy as np
 
 class Linear(bp.Policy):
 
-
     def init_run(self):
 
         self.weights = np.random.normal(size=12)
