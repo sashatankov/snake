@@ -1,20 +1,32 @@
 from tensorflow.keras import Model
-from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.layers import Dense, Conv2D, Activation, Flatten
 
+N_ACTIONS = 3
 
 
 class SnakeModel(Model):
 
     def __init__(self):
-        super(SnakeModel).__init__(self)
-        self.dense1 = Dense(18, activation='relu')
-        self.dense2 = Dense(9, activation='relu')
-        self.dense3 = Dense(4, activation='relu')
+        super(SnakeModel, self).__init__()
+
+        self.conv1 = Conv2D(32, 3, strides=(2, 2))
+        self.relu1 = Activation('relu')
+        self.conv2 = Conv2D(64, 3, strides=(2, 2))
+        self.relu2 = Activation('relu')
+        self.flatten = Flatten()
+        self.dense1 = Dense(128)
+        self.relu3 = Activation('relu')
+        self.dense2 = Dense(N_ACTIONS)
 
     def __call__(self, x, *args, **kwargs):
-        y = self.dense1(x)
+        y = self.conv1(x)
+        y = self.relu1(y)
+        y = self.conv2(y)
+        y = self.relu2(y)
+        y = self.flatten(y)
+        y = self.dense1(y)
+        y = self.relu3(y)
         y = self.dense2(y)
-        y = self.dense3(y)
 
         return y
 
