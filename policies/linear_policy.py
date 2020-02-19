@@ -16,19 +16,19 @@ class Linear(bp.Policy):
             self.actions_one_hot_vectors[action][i] = 1
 
         self.states_buffer = list()  # to save the state after each act() call
+        self.learning_rate = 0.01
+        self.discount_factor = 0.9
 
     def cast_string_args(self, policy_args):
         return policy_args
 
     def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
-        learning_rate = 0.01
-        discount_factor = 0.9
 
         for prev, action, new_s, r in self.states_buffer:
             features = self.get_features(prev, action)
             max_q = max([self._q_value(new_s, a) for a in Linear.ACTIONS])
-            max_q = r + discount_factor * max_q - np.dot(features, self.weights)
-            rate = max_q * learning_rate
+            max_q = r + self.discount_factor * max_q - np.dot(features, self.weights)
+            rate = max_q * self.learning_rate
             self.weights -= rate * features
 
         self.states_buffer.clear()
