@@ -14,6 +14,10 @@ class MyPolicy(bp.Policy):
         self.states_buffer = list()  # to save the state after each act() call
         self.learning_rate = 0.01
         self.discount_factor = 0.95
+        self.epsilon = 0.1
+        session = tf.keras.backend.get_session()
+        init = tf.global_variables_initializer()
+        session.run(init)
 
         self.model = SnakeModel()
         self.loss_object = tf.keras.losses.MeanSquaredError()
@@ -24,10 +28,10 @@ class MyPolicy(bp.Policy):
         return policy_args
 
     def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
-
         for prev, action, new_s, r in self.states_buffer:
             if prev is None or action is None:
                 continue
+
             with tf.GradientTape() as tape:
                 pred_q = self._q_value(prev, action)
                 new_s_board = new_s[BOARD].astype(np.float64)
@@ -38,20 +42,31 @@ class MyPolicy(bp.Policy):
             self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
 
         self.states_buffer.clear()
-        self.act(round, prev_state, prev_action, reward, new_state, too_slow)
 
     def act(self, round, prev_state, prev_action, reward, new_state, too_slow):
+        print("round ", round)
         self.states_buffer.append((prev_state, prev_action, new_state, reward))
+        if np.random.rand() < self.epsilon:
+            return np.random.choice(bp.Policy.ACTIONS)
+
         board = new_state[BOARD].astype(np.float64)
         board = board.reshape((1, board.shape[0], board.shape[1], 1))
-        preds = self.model(board)
+
+        board_ph = tf.placeholder(dtype=tf.float64, shape=[1, board.shape[1], board.shape[2], 1])
+        preds = self.model(board_ph)
         i = tf.argmax(preds[0])
 
-        return self.ACTIONS[i]
+        init = tf.global_variables_initializer()
+        with tf.Session() as sess:
+            sess.run(init)
+            index = sess.run(i, feed_dict={board_ph: board})
+
+        return self.ACTIONS[index]
 
     def _q_value(self, state, action):
         if action is None:
             return float("-inf")
+
         board = state[BOARD].astype(np.float64)
         board = board.reshape((1, board.shape[0], board.shape[1], 1))
         pred = self.model(board)[0]

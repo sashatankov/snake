@@ -13,8 +13,9 @@ class Linear(bp.Policy):
         self.actions2i[None] = 2
         self.weights = np.random.uniform(size=11)
         self.states_buffer = list()  # to save the state after each act() call
-        self.learning_rate = 0.1
-        self.discount_factor = 0.9
+        self.learning_rate = 0.2
+        self.discount_factor = 0.95
+        self.epsilon = 0.1
 
     def cast_string_args(self, policy_args):
         return policy_args
@@ -26,15 +27,18 @@ class Linear(bp.Policy):
             max_q = max([self._q_value(new_s, a) for a in Linear.ACTIONS])
             max_q = r + self.discount_factor * max_q - np.dot(features[self.actions2i[action], :], self.weights)
             rate = max_q * self.learning_rate
-            self.weights -= rate * features[self.actions2i[action], :]
+            self.weights += rate * features[self.actions2i[action], :]
 
         self.states_buffer.clear()
-        self.act(round, prev_state, prev_action, reward, new_state, too_slow)
 
     def act(self, round, prev_state, prev_action, reward, new_state, too_slow):
         self.states_buffer.append((prev_state, prev_action, new_state, reward))
         q_max = float("-inf")
         q_max_action = Linear.DEFAULT_ACTION
+
+        if np.random.rand() < self.epsilon:
+            return np.random.choice(bp.Policy.ACTIONS)
+
         for action in Linear.ACTIONS:
             q_val = self._q_value(new_state, action)
             if q_val > q_max:
