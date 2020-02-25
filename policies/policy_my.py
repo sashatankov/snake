@@ -21,7 +21,7 @@ class MyPolicy(bp.Policy):
         self.learning_rate = 0.01
         self.discount_factor = 0.95
         self.epsilon = 0.1
-
+        self.stacked_board = None
         self.model = SnakeModel()
         self.loss_object = tf.keras.losses.MeanSquaredError()
         self.train_loss = tf.keras.metrics.Mean()
@@ -42,10 +42,7 @@ class MyPolicy(bp.Policy):
         if np.random.rand() < self.epsilon:
             return np.random.choice(bp.Policy.ACTIONS)
 
-        if prev_action is not None and prev_state is not None:
-            board = self.new_states_batch[:, :, -1].copy()
-        else:
-            board = self.get_neighborhood(new_state)
+        board = self.get_neighborhood(new_state)
 
         board = board.reshape((1, board.shape[0], board.shape[1], 1))
         preds = self.model(board)
@@ -87,22 +84,23 @@ class MyPolicy(bp.Policy):
 
     def train_step(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
-        index = np.random.choice(self.states_batch.shape[2], size=3, replace=False)
-        prev = self.states_batch[:, :, index].copy()
-        action = self.action_batch[index].copy()
-        new_s = self.new_states_batch[:, :, index].copy()
-        r = self.rewards_batch[index].copy()
-        prev = prev.reshape((prev.shape[2], prev.shape[1], prev.shape[0]))
-        new_s = new_s.reshape((new_s.shape[2], new_s.shape[1], new_s.shape[0]))
+        # index = np.random.choice(self.states_batch.shape[2], size=3, replace=False)
+        if round % 5 == 0:
+            prev = self.states_batch
+            action = self.action_batch
+            new_s = self.new_states_batch
+            r = self.rewards_batch
+            prev = prev.reshape((prev.shape[2], prev.shape[1], prev.shape[0]))
+            new_s = new_s.reshape((new_s.shape[2], new_s.shape[1], new_s.shape[0]))
 
-        with tf.GradientTape() as tape:
-            pred_q = self._q_value(prev, action)
-            target_q = r + self.discount_factor * tf.reduce_max(self.model(new_s[..., np.newaxis]), axis=1)
-            loss = tf.reduce_mean(tf.square(pred_q - target_q))
-        gradients = tape.gradient(loss, self.model.trainable_variables)
-        self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
+            with tf.GradientTape() as tape:
+                pred_q = self._q_value(prev, action)
+                target_q = r + self.discount_factor * tf.reduce_max(self.model(new_s[..., np.newaxis]), axis=1)
+                loss = tf.reduce_mean(tf.square(pred_q - target_q))
+            gradients = tape.gradient(loss, self.model.trainable_variables)
+            self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
 
-        if self.states_batch.shape[2] % 50 == 0:
+            # if self.states_batch.shape[2] % 50 == 0:
             self.states_batch = None
             self.action_batch = None
             self.rewards_batch = None
@@ -116,9 +114,11 @@ class MyPolicy(bp.Policy):
 
         r, c = board.shape
         # print("in neighbor board shape ", board.shape)
-        stacked = np.vstack((board, board, board))
-        stacked = np.hstack((stacked, stacked, stacked))
-        window = stacked[x_pos + r - 20: x_pos + r + 20, y_pos + c - 20: y_pos + c + 20]
+
+        self.stacked_board = np.vstack((board, board, board))
+        self.stacked_board = np.hstack((self.stacked_board, self.stacked_board, self.stacked_board))
+
+        window = self.stacked_board[x_pos + r - 20: x_pos + r + 20, y_pos + c - 20: y_pos + c + 20].copy()
 
         if direction == 'N':
             return window.astype(np.float64)
