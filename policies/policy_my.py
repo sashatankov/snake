@@ -18,9 +18,9 @@ class MyPolicy(bp.Policy):
         self.new_states_batch = None
         self.rewards_batch = None
 
-        self.learning_rate = 0.01
+        self.learning_rate = 0.001
         self.discount_factor = 0.95
-        self.epsilon = 0.1
+        self.epsilon = 5
         self.stacked_board = None
         self.model = SnakeModel()
         self.loss_object = tf.keras.losses.MeanSquaredError()
@@ -38,13 +38,13 @@ class MyPolicy(bp.Policy):
 
         if prev_action is not None and prev_state is not None:
             self.add_to_batch(round, prev_state, prev_action, reward, new_state, too_slow)
-
-        if np.random.rand() < self.epsilon:
+        x = (self.epsilon / (min(10000, np.ceil(round / 100.0)) * 100 + 1))
+        if np.random.rand() < x:
             return np.random.choice(bp.Policy.ACTIONS)
 
         board = self.get_neighborhood(new_state)
-
         board = board.reshape((1, board.shape[0], board.shape[1], 1))
+
         preds = self.model(board)
         i = tf.argmax(preds[0])
         index = i.numpy()
@@ -69,34 +69,33 @@ class MyPolicy(bp.Policy):
         # print("prev_board shape ", prev_board.shape)
         # print("new_board shape ", new_board.shape)
         if self.states_batch is None:
-            self.states_batch = prev_board
-            self.states_batch = self.states_batch.reshape((self.states_batch.shape[0], self.states_batch.shape[1], 1))
+            self.states_batch = list()
+            self.states_batch.append(prev_board)
             self.action_batch = np.zeros(1, dtype=np.int32) + self.actions2i[prev_action]
-            self.new_states_batch = new_board
-            self.new_states_batch = self.new_states_batch.reshape((self.new_states_batch.shape[0], self.new_states_batch.shape[1], 1))
+            self.new_states_batch = list()
+            self.new_states_batch.append(new_board)
             self.rewards_batch = np.zeros(1, dtype=np.int32) + reward
 
         else:
-            self.states_batch = np.dstack((self.states_batch, prev_board))
+            self.states_batch.append(prev_board)
             self.action_batch = np.hstack((self.action_batch, np.zeros(1) + self.actions2i[prev_action]))
-            self.new_states_batch = np.dstack((self.new_states_batch, new_board))
+            self.new_states_batch.append(new_board)
             self.rewards_batch = np.hstack((self.rewards_batch, np.zeros(1) + reward))
 
     def train_step(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
-        # index = np.random.choice(self.states_batch.shape[2], size=3, replace=False)
+        index = np.random.choice(len(self.states_batch), size=3, replace=False)
         if round % 5 == 0:
-            prev = self.states_batch
-            action = self.action_batch
-            new_s = self.new_states_batch
-            r = self.rewards_batch
-            prev = prev.reshape((prev.shape[2], prev.shape[1], prev.shape[0]))
-            new_s = new_s.reshape((new_s.shape[2], new_s.shape[1], new_s.shape[0]))
+            prev = np.stack(self.states_batch)[index, :, :]
+            action = self.action_batch[index]
+            new_s = np.stack(self.new_states_batch)[index, :, :]
+            r = self.rewards_batch[index]
 
             with tf.GradientTape() as tape:
                 pred_q = self._q_value(prev, action)
                 target_q = r + self.discount_factor * tf.reduce_max(self.model(new_s[..., np.newaxis]), axis=1)
                 loss = tf.reduce_mean(tf.square(pred_q - target_q))
+
             gradients = tape.gradient(loss, self.model.trainable_variables)
             self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
 

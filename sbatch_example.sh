@@ -10,4 +10,4 @@ source /cs/labs/dshahaf/omribloch/env/snake/snake/bin/activate.csh
 module load tensorflow
 
 #python3 <YOUR_FOLDER>/Snake.py -P "Avoid(epsilon=0.5);Avoid(epsilon=0.2);MyPolicy(lr=0.001);MyPolicy(lr=0.001)" -D 5000 -s 1000 -l "<YOUR_LOG_PATH>" -r 0 -plt 0.01 -pat 0.005 -pit 60
-python3 Snake.py -D 10000 -P "Linear()" -bs "(20, 60)" -plt 0.05 -pat 0.01 -pit 5
+python3 Snake.py -D 10000 -P "MyPolicy()" -bs "(80, 80)" -plt 0.05 -pat 0.01 -pit 5
