@@ -5,7 +5,7 @@ LEFT = 0
 RIGHT = 1
 
 
-class Linear(bp.Policy):
+class Linear327337903(bp.Policy):
 
     def init_run(self):
 
@@ -13,9 +13,9 @@ class Linear(bp.Policy):
         self.actions2i[None] = 2
         self.weights = np.random.uniform(size=11)
         self.states_buffer = list()  # to save the state after each act() call
-        self.learning_rate = 0.2
-        self.discount_factor = 0.95
-        self.epsilon = 2
+        self.learning_rate = 0.01
+        self.discount_factor = 0.98
+        self.epsilon = 0.1
 
     def cast_string_args(self, policy_args):
         return policy_args
@@ -36,7 +36,7 @@ class Linear(bp.Policy):
         q_max = float("-inf")
         q_max_action = Linear.DEFAULT_ACTION
 
-        if np.random.rand() < (self.epsilon / min(10000, int(np.ceil(round / 10.0)) * 10) + 5):
+        if np.random.rand() < self.epsilon:
             return np.random.choice(bp.Policy.ACTIONS)
 
         for action in Linear.ACTIONS:

@@ -3,10 +3,10 @@ import tensorflow as tf
 import numpy as np
 from policies.snake_model import SnakeModel
 BOARD = 0
-tf.enable_eager_execution()
+tf.compat.v1.enable_eager_execution()
 
 
-class MyPolicy(bp.Policy):
+class Custom327337903(bp.Policy):
 
     def init_run(self):
 
@@ -18,8 +18,8 @@ class MyPolicy(bp.Policy):
         self.new_states_batch = None
         self.rewards_batch = None
 
-        self.learning_rate = 0.001
-        self.discount_factor = 0.95
+        self.learning_rate = 0.002
+        self.discount_factor = 0.98
         self.epsilon = 5
         self.stacked_board = None
         self.model = SnakeModel()
@@ -84,12 +84,12 @@ class MyPolicy(bp.Policy):
 
     def train_step(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
-        index = np.random.choice(len(self.states_batch), size=3, replace=False)
+        #index = np.random.choice(len(self.states_batch), size=3, replace=False)
         if round % 5 == 0:
-            prev = np.stack(self.states_batch)[index, :, :]
-            action = self.action_batch[index]
-            new_s = np.stack(self.new_states_batch)[index, :, :]
-            r = self.rewards_batch[index]
+            prev = np.stack(self.states_batch)
+            action = self.action_batch
+            new_s = np.stack(self.new_states_batch)
+            r = self.rewards_batch
 
             with tf.GradientTape() as tape:
                 pred_q = self._q_value(prev, action)
@@ -117,7 +117,7 @@ class MyPolicy(bp.Policy):
         self.stacked_board = np.vstack((board, board, board))
         self.stacked_board = np.hstack((self.stacked_board, self.stacked_board, self.stacked_board))
 
-        window = self.stacked_board[x_pos + r - 20: x_pos + r + 20, y_pos + c - 20: y_pos + c + 20].copy()
+        window = self.stacked_board[x_pos + r - 10: x_pos + r + 10, y_pos + c - 10: y_pos + c + 10].copy()
 
         if direction == 'N':
             return window.astype(np.float64)
